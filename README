@@ -1,5 +1,7 @@
 Victoria University EES4100 Test Suite
 
+Numerous erros but it was all I could muster in the time unfortunately
+
 This repository builds three applications:
 
 bacnet_client:

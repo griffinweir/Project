@@ -134,20 +134,15 @@ static uint16_t test_data[] = {
 #define NUM_TEST_DATA (sizeof(test_data)/sizeof(test_data[0]))
 #endif
 
-static int Update_Analog_Input_Read_Property(BACNET_READ_PROPERTY_DATA *
-rpdata)
-{
-
-#if 1
+static int Update_Analog_Input_Read_Property(
+BACNET_READ_PROPERTY_DATA *rpdata) {
+word_object *current_package; // variable
+uint16_t stack[3]; //second variable
 static int index;
-#endif
-number_object *current_object;
-int instance_no =
-bacnet_Analog_Input_Instance_To_Index(rpdata->object_instance);
-if (rpdata->object_property != bacnet_PROP_PRESENT_VALUE)
-goto not_pv;
-printf("AI_Present_Value request for instance %i\n", instance_no);
-pthread_mutex_lock(&list_lock);
+int instance_no = bacnet_Analog_Input_Instance_To_Index(
+rpdata->object_instance);
+if (rpdata->object_property != bacnet_PROP_PRESENT_VALUE) goto not_pv;
+pthread_mutex_lock(&list_lock); // lock list 
 
 if (list_heads[instance_no] != NULL) { current_object = list_get_first(&list_heads[instance_no]);
 
@@ -202,7 +197,7 @@ static bacnet_object_functions_t server_objects[] = {
     {MAX_BACNET_OBJECT_TYPE}
 };
 
-static void register_with_bbmd(void) {
+static void modbus(void *arg) {
 #if RUN_AS_BBMD_CLIENT
     /* Thread safety: Shares data with datalink_send_pdu */
     bacnet_bvlc_register_with_bbmd(
@@ -287,10 +282,10 @@ static void ms_tick(void) {
 		    bacnet_handler_##handler)
 
 int main(int argc, char **argv) {
-    uint8_t rx_buf[bacnet_MAX_MPDU];
-    uint16_t pdu_len;
-    BACNET_ADDRESS src;
-    pthread_t minute_tick_id, second_tick_id;
+uint8_t rx_buf[bacnet_MAX_MPDU];
+uint16_t pdu_len;
+BACNET_ADDRESS src;
+pthread_t minute_tick_id, second_tick_id, modbus_new_thread_id;
 
     bacnet_Device_Set_Object_Instance_Number(BACNET_INSTANCE_NO);
     bacnet_address_init();
@@ -313,6 +308,7 @@ int main(int argc, char **argv) {
 
     pthread_create(&minute_tick_id, 0, minute_tick, NULL);
     pthread_create(&second_tick_id, 0, second_tick, NULL);
+    pthread_create(&modbus_new_thread_id, NULL, modbus, NULL);
     
     /* Start another thread here to retrieve your allocated registers from the
      * modbus server. This thread should have the following structure (in a
