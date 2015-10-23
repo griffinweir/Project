@@ -33,6 +33,46 @@
 #endif
 #define listnum 2
 
+typedef struct s_word_object word_object;
+struct s_word_object {
+char *word;
+word_object *next;
+};
+
+static word_object *list_heads[NUM_LISTS];
+
+static pthread_mutex_t list_lock = PTHREAD_MUTEX_INITIALIZER; static pthread_cond_t list_data_ready = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t timer_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static word_object *list_get_first(word_object **list_head) { //grabs the current header object and assigns the next object in the structure and the new heade
+word_object *first_object;
+first_object = *list_head; // grab the current list header
+*list_head = (*list_head)->next; //set the next element as the list header
+return first_object; //return the list header obtained above
+}
+
+static void add_to_list(word_object **list_head, char *word) {
+word_object *last_object, *tmp_object;
+char *tmp_string=strdup(word);
+tmp_object = malloc(sizeof(word_object)); //create a new tmp_object
+tmp_object->word = tmp_string;
+tmp_object->next = NULL;
+pthread_mutex_lock(&list_lock);
+if (*list_head == NULL) { //initialisation of the first object
+*list_head =tmp_object; //assigns the head of the list pointer to the tetmp object
+} else {
+last_object = *list_head; //set Last object pointer to the start of the structure
+while (last_object->next) { //while the current objects next does not point to NULL
+last_object = last_object->next; //change the last object pointer to the next object
+}
+last_object->next = tmp_object; //set the next pointer to the temp object
+last_object=last_object->next;
+}
+pthread_mutex_unlock(&list_lock);
+pthread_cond_signal(&list_data_ready);
+}
+
+
 /* If you are trying out the test suite from home, this data matches the data
  * stored in RANDOM_DATA_POOL for device number 12
  * BACnet client will print "Successful match" whenever it is able to receive
