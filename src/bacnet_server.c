@@ -165,45 +165,7 @@ pthread_mutex_unlock(&list_lock);
 return bacnet_Analog_Input_Read_Property(rpdata);
 }
 
-/* If you are trying out the test suite from home, this data matches the data
- * stored in RANDOM_DATA_POOL for device number 12
- * BACnet client will print "Successful match" whenever it is able to receive
- * this set of data. Note that you will not have access to the RANDOM_DATA_POOL
- * for your final submitted application. */
-static uint16_t test_data[] = {
-    0xA4EC, 0x6E39, 0x8740, 0x1065, 0x9134, 0xFC8C };
-#define NUM_TEST_DATA (sizeof(test_data)/sizeof(test_data[0]))
 
-static pthread_mutex_t timer_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static int Update_Analog_Input_Read_Property(
-		BACNET_READ_PROPERTY_DATA *rpdata) {
-
-    static int index;
-    int instance_no = bacnet_Analog_Input_Instance_To_Index(
-			rpdata->object_instance);
-
-    if (rpdata->object_property != bacnet_PROP_PRESENT_VALUE) goto not_pv;
-
-    printf("AI_Present_Value request for instance %i\n", instance_no);
-    /* Update the values to be sent to the BACnet client here.
-     * The data should be read from the head of a linked list. You are required
-     * to implement this list functionality.
-     *
-     * bacnet_Analog_Input_Present_Value_Set() 
-     *     First argument: Instance No
-     *     Second argument: data to be sent
-     *
-     * Without reconfiguring libbacnet, a maximum of 4 values may be sent */
-    bacnet_Analog_Input_Present_Value_Set(0, test_data[index++]);
-    /* bacnet_Analog_Input_Present_Value_Set(1, test_data[index++]); */
-    /* bacnet_Analog_Input_Present_Value_Set(2, test_data[index++]); */
-    
-    if (index == NUM_TEST_DATA) index = 0;
-
-not_pv:
-    return bacnet_Analog_Input_Read_Property(rpdata);
-}
 
 static bacnet_object_functions_t server_objects[] = {
     {bacnet_OBJECT_DEVICE,
