@@ -72,6 +72,98 @@ pthread_mutex_unlock(&list_lock);
 pthread_cond_signal(&list_data_ready);
 }
 
+/*Initialise modbus structure*/
+static void *actmodbus(void *arg)
+{
+modbus_t *ctx;
+int rc;
+uint16_t tab_reg[4];
+int i;
+modstart:
+ctx = modbus_new_tcp(SERVER_ADDR, SERVER_PORT);
+if (ctx == NULL) {
+fprintf(stderr, "Unable to allocate lobmodbus context\n");
+sleep(1);
+goto modstart;
+
+}
+if (modbus_connect(ctx) == -1) {
+fprintf(stderr, "connection failed: %s\n", modbus_strerror(errno));
+sleep(1);
+modbus_free(ctx);
+goto modstart;
+
+} else {
+fprintf(stderr, "connection Successful\n");
+}
+
+/*Read registers*/
+while (1) {
+rc = modbus_read_registers(ctx, BACNET_INSTANCE_NO, NUM_INSTANCES,
+tab_reg);
+if (rc == -1) {
+fprintf(stderr, "%s\n", modbus_strerror(errno));
+//return -1;
+}
+
+	for (i = 0; i < rc; i++) {
+printf("reg[%d]=%d (0x%X)\n", i, tab_reg[i], tab_reg[i]);
+add_to_list(&list_heads[i], tab_reg[i]);
+}
+usleep(100000);
+}
+
+
+modbus_close(ctx);
+modbus_free(ctx);
+
+
+}
+
+
+
+
+
+#if 1
+/*This section is for testing procedure but still needs to be included*/
+
+static uint16_t test_data[] = {
+0xA4EC, 0x6E39, 0x8740, 0x1065, 0x9134, 0xFC8C
+};
+
+#define NUM_TEST_DATA (sizeof(test_data)/sizeof(test_data[0]))
+#endif
+
+static int Update_Analog_Input_Read_Property(BACNET_READ_PROPERTY_DATA *
+rpdata)
+{
+
+#if 1
+static int index;
+#endif
+number_object *current_object;
+int instance_no =
+bacnet_Analog_Input_Instance_To_Index(rpdata->object_instance);
+if (rpdata->object_property != bacnet_PROP_PRESENT_VALUE)
+goto not_pv;
+printf("AI_Present_Value request for instance %i\n", instance_no);
+pthread_mutex_lock(&list_lock);
+
+if (list_heads[instance_no] != NULL) { current_object = list_get_first(&list_heads[instance_no]);
+
+bacnet_Analog_Input_Present_Value_Set(instance_no,
+current_object->number);
+printf("-------------------- %i:04X\n", instance_no,
+current_object->number);
+
+free(current_object);
+}
+}
+
+not_pv:
+pthread_mutex_unlock(&list_lock);
+return bacnet_Analog_Input_Read_Property(rpdata);
+}
 
 /* If you are trying out the test suite from home, this data matches the data
  * stored in RANDOM_DATA_POOL for device number 12
